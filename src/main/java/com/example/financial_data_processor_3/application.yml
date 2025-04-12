@@ -1,0 +1,24 @@
+# application.properties
+
+# --- Redis Config ---
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+  # eğer password varsa:
+  # spring.data.redis.password=secret
+  
+  # --- Kafka Config ---
+spring.kafka.bootstrap-servers=localhost:9092
+spring.kafka.consumer.group-id=financeGroup
+spring.kafka.consumer.auto-offset-reset=earliest
+spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+  
+  # JPA/Hibernate Config (opsiyonel)
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+  
+  # Logging
+logging.level.org.springframework.kafka=INFO
+logging.level.org.apache.kafka=INFO
