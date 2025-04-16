@@ -4,13 +4,14 @@ public class Rate {
     private String name;
     private double value;
 
+    // constructors, getters, setters …
 
-    public Rate() {}
-
-    public Rate(String name, double value) {
-        this.name = name;
-        this.value = value;
+    @Override
+    public String toString() {
+        // Helpful formatted output
+        return "Rate{" +
+                "name='" + name + '\'' +
+                ", value=" + value +
+                '}';
     }
-
-    // getters, setters, toString
 }
