@@ -6,12 +6,5 @@ public class Rate {
 
     // constructors, getters, setters …
 
-    @Override
-    public String toString() {
-        // Helpful formatted output
-        return "Rate{" +
-                "name='" + name + '\'' +
-                ", value=" + value +
-                '}';
-    }
+
 }
