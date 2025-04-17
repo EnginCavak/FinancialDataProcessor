@@ -1,0 +1,1 @@
+Projedeki hatalar analiz ediliniyor
