@@ -1,3 +1,12 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import com.example.financial_data_processor_3.model.Rate;
+import org.springframework.web.client.RestTemplate;
+import com.example.financial_data_processor_3.model.Rate;
+
+
 package com.example.financial_data_processor_3.subscriber;
 
 public class Platform1Subscriber implements Subscriber {

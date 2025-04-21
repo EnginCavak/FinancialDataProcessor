@@ -1,43 +1,32 @@
 package com.example.financial_data_processor_3.coordinator;
 
+import com.example.financial_data_processor_3.integration.RateKafkaProducer;
 import com.example.financial_data_processor_3.model.Rate;
 import com.example.financial_data_processor_3.model.RateFields;
 import com.example.financial_data_processor_3.model.RateStatus;
 import com.example.financial_data_processor_3.repository.RateCacheRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
+@Component
 public class Coordinator {
 
-    @Autowired
-    private RateCacheRepository rateCacheRepository;
+    private final RateCacheRepository cacheRepo;
+    private final RateKafkaProducer kafkaProducer;
 
-
-
-
-    public void onConnect(String platformName, boolean status) {
-        System.out.println("[" + platformName + "] Connection " + (status ? "SUCCESS" : "FAIL"));
-        // Eğer bağlantı başarılıysa logla, vb.
+    public Coordinator(RateCacheRepository cacheRepo, RateKafkaProducer kafkaProducer) {
+        this.cacheRepo = cacheRepo;
+        this.kafkaProducer = kafkaProducer;
     }
 
-    public void onDisconnect(String platformName, boolean status) {
-        System.out.println("[" + platformName + "] Disconnected: " + status);
+    public void onConnect(String platform, boolean status) {
+        System.out.printf("[%s] Connection %s%n", platform, status ? "SUCCESS" : "FAIL");
     }
 
-    public void onRateAvailable(String platformName, String rateName, Rate rate) {
-        System.out.println("Rate available: " + rateName + " -> " + rate);
-        // Cache kaydet
-        rateCacheRepository.saveRawRate(rateName, rate);
-        // Kafka publish
-        rateKafkaProducer.sendRawRate(rateName + ":" + rate.getValue());
+    public void onRateAvailable(String platform, String rateName, Rate rate) {
+        cacheRepo.saveRaw(rateName, rate);
+        kafkaProducer.sendRawRate(rateName, rate.getValue());
+        System.out.println("Stored & published " + rate);
     }
 
-
-    public void onRateUpdate(String platformName, String rateName, RateFields rateFields) {
-        System.out.println("Rate update: " + rateName + " -> " + rateFields);
-        // Güncellenmiş veriyi cache’e, DB’ye kaydet...
-    }
-
-    public void onRateStatus(String platformName, String rateName, RateStatus rateStatus) {
-        System.out.println("Rate status changed: " + rateName + " -> " + rateStatus);
-    }
+    // onDisconnect, onRateUpdate, onRateStatus ...
 }

@@ -12,12 +12,7 @@ public class RateKafkaProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendRawRate(String rateData) {
-        // "raw-rates" topic’e gönderelim
-        kafkaTemplate.send("raw-rates", rateData);
-    }
-
-    public void sendCalculatedRate(String rateData) {
-        kafkaTemplate.send("calculated-rates", rateData);
+    public void sendRawRate(String rateKey, double value) {
+        kafkaTemplate.send("raw-rates", rateKey, String.valueOf(value));
     }
 }
