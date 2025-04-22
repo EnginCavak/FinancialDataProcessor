@@ -1,55 +1,43 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.Socket;
-import com.example.financial_data_processor_3.model.Rate;
-import org.springframework.web.client.RestTemplate;
-import com.example.financial_data_processor_3.model.Rate;
-
 package com.example.financial_data_processor_3.subscriber;
 
+import com.example.financial_data_processor_3.coordinator.Coordinator;
+import com.example.financial_data_processor_3.model.Rate;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+@Component
 public class Platform2Subscriber implements Subscriber {
 
-    @Override
-    public void connect(String platformName, String userId, String password) throws Exception {
-        // REST endpoint üzerinden auth request...
-        System.out.println("REST Subscriber connected to " + platformName + " with user " + userId);
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final Coordinator coordinator;
+
+    public Platform2Subscriber(Coordinator coordinator) {
+        this.coordinator = coordinator;
     }
 
     @Override
-    public void disconnect(String platformName, String userId, String password) throws Exception {
-        // Belki session token iptali vb.
-        System.out.println("REST Subscriber disconnected from " + platformName);
+    public void connect(String platform, String user, String pwd) {
+        coordinator.onConnect(platform, true); // mock auth always succeeds
     }
 
     @Override
-    public void subscribe(String platformName, String rateName) throws Exception {
-        System.out.println("REST Subscriber subscribed to " + rateName);
-        // Her x saniyede bir /mock/rate endpoint’ine istek atıp Rate verisi çekelim
-        Thread pollThread = new Thread(() -> {
+    public void subscribe(String platform, String rateName) {
+        new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    String response = restTemplate.getForObject("http://localhost:8080/mock/rate", String.class);
-                    // parse: "USD/EUR:1.23"
-                    if (response != null) {
-                        String[] parts = response.split(":");
-                        if (parts.length == 2) {
-                            Rate rate = new Rate(parts[0], Double.parseDouble(parts[1]));
-                            // coordinator.onRateAvailable(platformName, rateName, rate)
-                        }
+                    String resp = restTemplate.getForObject(
+                            "http://localhost:8080/mock/rate", String.class);
+                    if (resp != null && resp.contains(":")) {
+                        String[] p = resp.split(":");
+                        Rate rate = new Rate(p[0], Double.parseDouble(p[1]));
+                        coordinator.onRateAvailable(platform, p[0], rate);
                     }
                     Thread.sleep(2000);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                } catch (Exception e) { e.printStackTrace(); }
             }
-        });
-        pollThread.start();
+        }).start();
     }
 
-
-    @Override
-    public void unsubscribe(String platformName, String rateName) throws Exception {
-        System.out.println("REST Subscriber unsubscribed from " + rateName + " on " + platformName);
-    }
+    @Override public void unsubscribe(String p, String r) {}
+    @Override public void disconnect(String p, String u, String pw) {}
 }
