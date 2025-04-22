@@ -7,6 +7,11 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import com.example.financial_data_processor_3.model.Rate;
 
 @Component
 public class Platform1Subscriber implements Subscriber {

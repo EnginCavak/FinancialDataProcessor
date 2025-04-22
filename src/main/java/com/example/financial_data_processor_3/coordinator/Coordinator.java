@@ -28,5 +28,9 @@ public class Coordinator {
         System.out.println("Stored & published " + rate);
     }
 
+    public void onDisconnect(String platform, boolean status) {
+        System.out.printf("[%s] Disconnected: %s%n", platform, status);
+    }
+
     // onDisconnect, onRateUpdate, onRateStatus ...
 }
