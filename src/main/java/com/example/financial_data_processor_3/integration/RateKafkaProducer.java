@@ -1,47 +1,43 @@
 package com.example.financial_data_processor_3.integration;
+import com.example.financial_data_processor_3.service.RateCalculator;
+import com.example.financial_data_processor_3.integration.RateKafkaProducer;
+import com.example.financial_data_processor_3.coordinator.Coordinator;
 
-import com.example.financial_data_processor_3.model.Rate;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+
+import com.example.financial_data_processor_3.model.RateFields;
+import lombok.RequiredArgsConstructor;                     // Lombok varsa
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class RawRateKafkaConsumer {
+@RequiredArgsConstructor                                   // Lombok yoksa ↓ ctor’u elle ekle
+public class RateKafkaProducer {
 
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final CalculatedRateService calculatedRateService;
+    /* -------------------------------------------------
+       İki ayrı KafkaTemplate:
+         • rawTemplate  ->  String  key / String value
+         • objTemplate  ->  String  key / Object value
+       ------------------------------------------------- */
+    private final KafkaTemplate<String, String> rawTemplate;
+    private final KafkaTemplate<String, Object> objTemplate;
 
-    public RawRateKafkaConsumer(
-            StringRedisTemplate redisTemplate,
-            ObjectMapper objectMapper,
-            CalculatedRateService calculatedRateService) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-        this.calculatedRateService = calculatedRateService;
+    /* ------------ HAM KUR --------------------------- */
+    public void sendRawRate(String pair, double value) {
+        rawTemplate.send("raw-rates", pair, String.valueOf(value));
     }
 
-    @KafkaListener(
-            topics = {"platform1-raw", "platform2-raw"},
-            groupId = "raw-rate-group"
-    )
-    public void listen(ConsumerRecord<String,String> record) {
-        String pair = record.key();
-        double value = Double.parseDouble(record.value());
-        Rate rate = new Rate(pair, value);
-
-        // Redis'e kaydet
-        String key = "raw:" + pair;
-        try {
-            String json = objectMapper.writeValueAsString(rate);
-            redisTemplate.opsForValue().set(key, json);
-        } catch (Exception e) {
-            // hatayı logla
-        }
-
-        // Hesaplama servisini tetikle
-        calculatedRateService.calculateAndSend(pair);
+    /* ------------ HESAPLANMIŞ KUR ------------------- */
+    public void sendCalculatedRate(String key, RateFields fields) {
+        objTemplate.send("calculated-rates", key, fields);
     }
 }
+
+/*  Lombok KULLANMIYORSAN constructor’ı kendin ekle:
+public RateKafkaProducer(KafkaTemplate<String, String> rawTemplate,
+                         KafkaTemplate<String, Object> objTemplate) {
+    this.rawTemplate = rawTemplate;
+    this.objTemplate = objTemplate;
+}
+*/
