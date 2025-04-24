@@ -18,6 +18,10 @@ import org.springframework.kafka.annotation.KafkaListener;
  * NOTE: there is **no Spring stereotype** here (@Component / @Service).
  * The bean is supplied explicitly in DemoRunnerConfig.
  */
+
+/**
+ * Koordinasyonu sağlar: raw price üretir ve Kafka'ya gönderir.
+ */
 public class Coordinator {
 
     private final RateCacheRepository cacheRepo;
