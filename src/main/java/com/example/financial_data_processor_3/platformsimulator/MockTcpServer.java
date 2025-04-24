@@ -1,44 +1,59 @@
 package com.example.financial_data_processor_3.platformsimulator;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Random;
+import java.time.Instant;
 
-public class MockTcpServer {
+/**
+ * A very small TCP server that keeps one client connected and
+ * pushes a fake rate every second.
+ *
+ * Spring sees a public {@code start()} method (init-method) and calls it
+ * right after the bean is created, so you do NOT start it manually elsewhere.
+ */
+public class MockTcpServer implements Runnable {
 
-    private ServerSocket serverSocket;
-    private volatile boolean running = false;
+    private final int port;
+    private Thread serverThread;
 
-    public void start(int port) throws IOException {
-        serverSocket = new ServerSocket(port);
-        running = true;
-        System.out.println("[MockTCP] started on port " + port);
+    /* ▼▼  REQUIRED: Spring’s init-method calls this                        ▼▼ */
+    public void start() {
+        serverThread = new Thread(this, "MockTCP-" + port);
+        serverThread.setDaemon(true);
+        serverThread.start();
+    }
+    /* ▲▲  ---------------------------------------------------------------- ▲▲ */
 
-        new Thread(() -> {
-            while (running) {
-                try (Socket client = serverSocket.accept();
-                     OutputStream out = client.getOutputStream()) {
-
-                    String[] symbols = {"USD/EUR", "GBP/USD", "JPY/EUR"};
-                    Random rnd = new Random();
-                    String line = symbols[rnd.nextInt(symbols.length)] + ":" +
-                            (0.5 + rnd.nextDouble() * 2) + "\n";
-
-                    out.write(line.getBytes());
-                    out.flush();
-
-                } catch (IOException e) {
-                    if (running) e.printStackTrace();
-                }
-            }
-        }).start();
+    /** Spring Bean constructor (no args → SubscriberLoader can also use it) */
+    public MockTcpServer() {
+        this(5000);                 // default port
     }
 
-    public void stop() throws IOException {
-        running = false;
-        if (serverSocket != null) serverSocket.close();
-        System.out.println("[MockTCP] stopped.");
+    /** Convenience constructor when you create it manually in code. */
+    public MockTcpServer(int port) {
+        this.port = port;
+    }
+
+    @Override
+    public void run() {
+        System.out.println("[MockTCP] listening on port " + port);
+        try (ServerSocket server = new ServerSocket(port)) {
+            Socket client = server.accept();                         // one client
+            System.out.println("[MockTCP] client connected");
+            BufferedWriter out = new BufferedWriter(
+                    new OutputStreamWriter(client.getOutputStream()));
+            while (!server.isClosed()) {
+                String line = "USD/EUR|" + (1.05 + Math.random() * 0.02)
+                        + "|" + Instant.now();
+                out.write(line);
+                out.newLine();
+                out.flush();
+                Thread.sleep(1_000);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

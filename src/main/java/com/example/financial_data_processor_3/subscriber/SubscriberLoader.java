@@ -6,24 +6,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class SubscriberLoader {
+/**
+ * Dynamically loads Subscriber implementations listed in
+ * src/main/resources/subscribers.properties.
+ *
+ * File format:
+ *   subscriber.1=com.example.….Platform1Subscriber
+ *   subscriber.2=com.example.….Platform2Subscriber
+ */
+public final class SubscriberLoader {
 
-    public static List<Subscriber> loadSubscribers(String configFile) throws IOException {
-        List<Subscriber> subscribers = new ArrayList<>();
+    private static final String CONFIG_FILE = "subscribers.properties";
+    private static final String PREFIX = "subscriber.";
+
+    private SubscriberLoader() {
+        /* utility class – no instances */
+    }
+
+    public static List<Subscriber> loadSubscribers() throws IOException {
+        // 1) Load the properties file from the class-path
         Properties props = new Properties();
-
-        try (InputStream in = SubscriberLoader.class.getResourceAsStream(configFile)) {
+        try (InputStream in = Thread.currentThread()
+                .getContextClassLoader()
+                .getResourceAsStream(CONFIG_FILE)) {
+            if (in == null) {
+                throw new IllegalStateException(
+                        "'" + CONFIG_FILE + "' not found on classpath. " +
+                                "Place it in src/main/resources.");
+            }
             props.load(in);
         }
 
-        String classNames = props.getProperty("subscriber.classes");
-        for (String className : classNames.split(",")) {
-            try {
-                Class<?> clazz = Class.forName(className.trim());
-                Subscriber sub = (Subscriber) clazz.getDeclaredConstructor().newInstance();
-                subscribers.add(sub);
-            } catch (Exception e) {
-                e.printStackTrace();
+        // 2) Instantiate each class whose key starts with "subscriber."
+        List<Subscriber> subscribers = new ArrayList<>();
+
+        for (String key : props.stringPropertyNames()) {
+            if (key.startsWith(PREFIX)) {
+                String className = props.getProperty(key).trim();
+                try {
+                    Class<?> clazz = Class.forName(className);
+                    subscribers.add((Subscriber) clazz.getDeclaredConstructor().newInstance());
+                } catch (Exception e) {
+                    throw new IllegalStateException(
+                            "Failed to load Subscriber: " + className, e);
+                }
             }
         }
         return subscribers;

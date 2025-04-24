@@ -1,38 +1,62 @@
-// src/main/java/com/example/financial_data_processor_3/config/DemoRunnerConfig.java
 package com.example.financial_data_processor_3.config;
 
 import com.example.financial_data_processor_3.coordinator.Coordinator;
-import com.example.financial_data_processor_3.model.Rate;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import com.example.financial_data_processor_3.integration.RateKafkaProducer;
 import com.example.financial_data_processor_3.platformsimulator.MockTcpServer;
+import com.example.financial_data_processor_3.repository.RateCacheRepository;
 import com.example.financial_data_processor_3.subscriber.Platform1Subscriber;
 import com.example.financial_data_processor_3.subscriber.Platform2Subscriber;
+import com.example.financial_data_processor_3.subscriber.Subscriber;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
+/**
+ * Beans that help the demo run (mock TCP server, mock subscribers, coordinator).
+ */
 @Configuration
 public class DemoRunnerConfig {
 
-
-    @Bean(initMethod = "start", destroyMethod = "stop")
+    /* ----------------------------------------------------------------
+       1)  TCP mock server
+       ---------------------------------------------------------------- */
+    @Bean(initMethod = "start")             // Spring will call server.start()
     public MockTcpServer tcpServer() {
-        MockTcpServer server = new MockTcpServer();
-        try { server.start(5000); } catch (Exception e) { e.printStackTrace(); }
-        return server;
+        return new MockTcpServer(5000);     // no manual start(5000) here!
     }
 
-
+    /* ----------------------------------------------------------------
+       2)  Coordinator — wired with cache + Kafka producer
+       ---------------------------------------------------------------- */
     @Bean
-    CommandLineRunner demo(Coordinator coord,
-                           Platform1Subscriber tcpSub,
-                           Platform2Subscriber restSub) {
-        return args -> {
-            tcpSub.connect("Platform1", "u", "p");
-            tcpSub.subscribe("Platform1", "USD/EUR");
+    public Coordinator coordinator(RateCacheRepository cache,
+                                   RateKafkaProducer producer) {
+        return new Coordinator(cache, producer);
+    }
 
-            restSub.connect("Platform2", "u", "p");
-            restSub.subscribe("Platform2", "BTC/USD");
+    /* ----------------------------------------------------------------
+       3)  Demo subscribers that talk to the coordinator
+       ---------------------------------------------------------------- */
+    @Bean
+    public List<Subscriber> demoSubscribers(Coordinator coordinator) {
+        Platform1Subscriber tcpSub  = new Platform1Subscriber(coordinator);
+        Platform2Subscriber restSub = new Platform2Subscriber(coordinator);
+        return List.of(tcpSub, restSub);
+    }
+
+    /* ----------------------------------------------------------------
+       4)  (Optional) run a quick demo after startup
+       ---------------------------------------------------------------- */
+    /*
+    @Bean
+    public ApplicationRunner demoRunner(List<Subscriber> subs) {
+        return args -> {
+            subs.forEach(s -> s.connect("demo", "user", "pass"));
+            subs.forEach(s -> s.subscribe("demo", "USD/EUR"));
+            Thread.sleep(5_000);            // keep app alive long enough to see data
+            subs.forEach(s -> s.disconnect("demo", "user", "pass"));
         };
     }
-
+    */
 }
