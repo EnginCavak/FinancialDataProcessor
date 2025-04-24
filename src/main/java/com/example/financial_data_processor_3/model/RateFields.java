@@ -5,6 +5,9 @@ public class RateFields {
     private double close;
     private double high;
     private double low;
-
+    private double bid;
+    private double ask;
+    private double mid;
     // constructor, getters, setters, toString
+    public RateFields() {}
 }
