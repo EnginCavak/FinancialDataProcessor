@@ -1,10 +1,15 @@
 package com.example.financial_data_processor_3.coordinator;
+import com.example.financial_data_processor_3.service.RateCalculator;
+import com.example.financial_data_processor_3.integration.RateKafkaProducer;
+import com.example.financial_data_processor_3.coordinator.Coordinator;
 
 import com.example.financial_data_processor_3.integration.RateKafkaProducer;
 import com.example.financial_data_processor_3.model.Rate;
 import com.example.financial_data_processor_3.model.RateFields;
 import com.example.financial_data_processor_3.model.RateStatus;
 import com.example.financial_data_processor_3.repository.RateCacheRepository;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
 
 /**
  * Central hub that receives events from Subscriber modules
