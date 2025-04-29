@@ -3,25 +3,23 @@ package com.example.financial_data_processor_3.service;
 import com.example.financial_data_processor_3.model.RateFields;
 import org.springframework.stereotype.Service;
 
+/** Raw fiyatı alır, spread hesaplar, tüm alanları döndürür */
 @Service
 public class RateCalculator {
-    public RateFields calculate(double rawPrice) {
-        RateFields f = new RateFields();
 
-        f.setOpen(rawPrice);
-        f.setClose(rawPrice);
+    public RateFields calculate(double raw) {
 
-        double spread = rawPrice * 0.001;
-        double bid = rawPrice - spread;
-        double ask = rawPrice + spread;
+        double spread = raw * 0.001;      // %0,1
+        double bid  = raw - spread;
+        double ask  = raw + spread;
+        double mid  = (bid + ask) / 2.0;
 
-        f.setHigh(Math.max(rawPrice, ask));
-        f.setLow(Math.min(rawPrice, bid));
-
-        f.setBid(bid);
-        f.setAsk(ask);
-        f.setMid((bid + ask) / 2.0);
-
-        return f;
+        return new RateFields(
+                raw,          // open
+                raw,          // close
+                Math.max(raw, ask),   // high
+                Math.min(raw, bid),   // low
+                bid, ask, mid
+        );
     }
 }

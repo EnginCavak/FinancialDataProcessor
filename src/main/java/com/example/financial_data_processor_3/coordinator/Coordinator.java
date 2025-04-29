@@ -1,83 +1,70 @@
 package com.example.financial_data_processor_3.coordinator;
-import com.example.financial_data_processor_3.service.RateCalculator;
-import com.example.financial_data_processor_3.integration.RateKafkaProducer;
-import com.example.financial_data_processor_3.coordinator.Coordinator;
 
 import com.example.financial_data_processor_3.integration.RateKafkaProducer;
 import com.example.financial_data_processor_3.model.Rate;
 import com.example.financial_data_processor_3.model.RateFields;
 import com.example.financial_data_processor_3.model.RateStatus;
 import com.example.financial_data_processor_3.repository.RateCacheRepository;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.kafka.annotation.KafkaListener;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 /**
- * Central hub that receives events from Subscriber modules
- * and forwards them to cache, Kafka, etc.
- *
- * NOTE: there is **no Spring stereotype** here (@Component / @Service).
- * The bean is supplied explicitly in DemoRunnerConfig.
+ * Central hub between the REST layer, subscribers and Kafka.
  */
-
-/**
- * Koordinasyonu sağlar: raw price üretir ve Kafka'ya gönderir.
- */
+@Service
+@RequiredArgsConstructor
 public class Coordinator {
 
     private final RateCacheRepository cacheRepo;
-    private final RateKafkaProducer   kafkaProducer;
+    private final RateKafkaProducer   producer;
 
-    /* ------------------------------------------------------------------ */
-    /*  Constructor                                                       */
-    /* ------------------------------------------------------------------ */
-    public Coordinator(RateCacheRepository cacheRepo,
-                       RateKafkaProducer kafkaProducer) {
-        this.cacheRepo     = cacheRepo;
-        this.kafkaProducer = kafkaProducer;
+    /* ------------------------------------------------------------------
+       High-level helper used by controllers
+       ------------------------------------------------------------------ */
+    public void publishRaw(String platform, String pair, double price) {
+        String topic = platform + "-raw";                // e.g. platform1-raw
+        producer.sendRawRate(topic, pair, price);
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  Call-backs from Subscribers                                       */
-    /* ------------------------------------------------------------------ */
+    /* ------------------------------------------------------------------
+       Callbacks expected by the Subscriber classes
+       (they can be fleshed out later; for now we just log / stub)
+       ------------------------------------------------------------------ */
     public void onConnect(String platform, boolean success) {
-        System.out.printf("[%s] Connection %s%n",
-                platform, success ? "SUCCESS" : "FAIL");
+        System.out.printf("[%s] connection %s%n",
+                platform, success ? "OK" : "FAILED");
     }
 
     public void onDisconnect(String platform, boolean success) {
-        System.out.printf("[%s] Disconnected: %s%n", platform, success);
+        System.out.printf("[%s] disconnected (%s)%n", platform, success);
     }
 
     public void onRateAvailable(String platform,
-                                String rateName,
+                                String pair,
                                 Rate rate) {
 
-        // 1) Cache raw quote
-        cacheRepo.saveRaw(rateName, rate);
-
-        // 2) Publish to Kafka
-        kafkaProducer.sendRawRate(rateName, rate.getValue());
-
-        System.out.printf("[%s] Stored & published %s=%f%n",
-                platform, rateName, rate.getValue());
+        cacheRepo.saveRaw(pair, rate);                   // cache
+        producer.sendRawRate(pair, rate.getValue());     // kafka (old sig!)
+        System.out.printf("[%s] raw %s=%f%n",
+                platform, pair, rate.getValue());
     }
 
     public void onRateUpdate(String platform,
-                             String rateName,
+                             String pair,
                              RateFields fields) {
 
-        cacheRepo.saveCalculated(rateName, fields);
-        kafkaProducer.sendCalculatedRate(rateName, fields);
-        System.out.printf("[%s] Updated %s -> %s%n",
-                platform, rateName, fields);
+        cacheRepo.saveCalculated(pair, fields);
+        producer.sendCalculatedRate(pair, fields);
+        System.out.printf("[%s] calc-update %s -> %s%n",
+                platform, pair, fields);
     }
 
     public void onRateStatus(String platform,
-                             String rateName,
+                             String pair,
                              RateStatus status) {
 
-        cacheRepo.saveStatus(rateName, status);
-        System.out.printf("[%s] Status %s -> %s%n",
-                platform, rateName, status);
+        cacheRepo.saveStatus(pair, status);
+        System.out.printf("[%s] status %s -> %s%n",
+                platform, pair, status);
     }
 }

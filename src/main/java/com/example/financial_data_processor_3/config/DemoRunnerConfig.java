@@ -29,11 +29,12 @@ public class DemoRunnerConfig {
     /* ----------------------------------------------------------------
        2)  Coordinator — wired with cache + Kafka producer
        ---------------------------------------------------------------- */
+    /*
     @Bean
     public Coordinator coordinator(RateCacheRepository cache,
                                    RateKafkaProducer producer) {
         return new Coordinator(cache, producer);
-    }
+    }*/
 
     /* ----------------------------------------------------------------
        3)  Demo subscribers that talk to the coordinator
