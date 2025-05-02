@@ -1,30 +1,50 @@
 # 💹 financial_data_processor_3
 
-Bu proje, farklı platformlardan gelen döviz kuru verilerini toplayarak Kafka aracılığıyla yayımlayan, Redis’te geçici olarak saklayan ve hesaplanmış verileri PostgreSQL ile OpenSearch’e aktaran bir mikroservis mimarisi örneğidir.
+Bu proje;
 
-## 📦 Proje Yapısı ve Teknolojiler
+* birden fazla mock platformdan (TCP akışı + REST) döviz kuru toplar,
+* ham kurları **Kafka**’ya yayar,
+* **Redis**’te önbelleğe alır,
+* anlık olarak hesaplanmış kurları üretir,
+* (yol haritası) verileri **PostgreSQL** ve **OpenSearch**’e kalıcılaştırır.
 
-- **Java 17** ve **Spring Boot 3.1**
-- **Kafka** (Docker ile çalışır)
-- **Redis 7** (raw & calculated cache için)
-- **PostgreSQL** (hesaplanan verileri kalıcı olarak saklamak için - planlanıyor)
-- **OpenSearch** (veri arama için - planlanıyor)
-- **Filebeat** (log forwarding için - planlanıyor)
-- **Docker** & **Docker Compose**
+---
 
-## 🔁 Akış
+## 📦 Teknoloji Yığını
 
-1. Kullanıcı, `GET /platform1/subscribe?pair=EUR/USD` gibi bir endpoint'e istek atar.
-2. Bu istek sonucunda rastgele bir fiyat oluşturulur.
-3. `Coordinator`, bu veriyi `RateKafkaProducer` aracılığıyla Kafka'ya gönderir.
-4. Kafka'dan gelen raw-rate verisi Redis'e `raw:<pair>` şeklinde kaydedilir.
-5. `RawRateKafkaConsumer` bu veriyi okur, `RateCalculator` ile hesaplanmış değerler üretir.
-6. Hesaplanan değerler `calculated-rates` Kafka konusuna gönderilir.
-7. (Planlı) `CalculatedRateConsumer`, bu verileri PostgreSQL ve OpenSearch’e aktaracaktır.
+| Katman | Kullanılan Teknoloji / Sürüm |
+|--------|-----------------------------|
+| Dil | **Java 17** |
+| Çatı | **Spring Boot 3.1** • Spring MVC • Spring Kafka |
+| Mesaj Kuyruğu | **Apache Kafka 3.4** (Docker) |
+| Önbellek | **Redis 7** |
+| Kalıcı DB | **PostgreSQL 15** *(planlandı)* |
+| Arama / Log | **OpenSearch + Filebeat** *(planlandı)* |
+| Derleme | **Maven 3.9** • Lombok • Log4j2 |
+| Çalışma Ort. | **Docker & Docker Compose** |
 
+---
+
+## 🔁 Çalışma Akışı (Özet)
+
+```mermaid
+sequenceDiagram
+    participant İstemci
+    participant Controller
+    participant Koordinatör
+    participant Kafka
+    participant Redis
+    İstemci->>Controller: GET /platform1/subscribe?pair=EUR/USD
+    Controller->>Koordinatör: publishRaw()
+    Koordinatör->>Kafka: platform1-raw
+    Kafka-->>Redis: raw:EUR/USD
+    Kafka-->>HesapConsumer: ham veri
+    HesapConsumer->>Redis: calculated
+    HesapConsumer->>Kafka: calculated-rates
+    Kafka-->>{Postgres • OpenSearch}: (planlı)
 ## 🛠 Kurulum
 
-> Docker, Java 17, Maven ve Git yüklü olmalıdır.
+> Docker, Java 17, Maven ve Git yüklü olmalıdır
 
 ```bash
 # 1. Repoyu klonla
